@@ -3,41 +3,66 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from shapely.geometry import LineString
 
+def mat2dB(mat): # From https://eyesaas.com/wifi-signal-loss/
+    dBmatList = {
+        'drywall'           :   0.01,
+        'glass'             :   0.07,
+        'wooden'            :   3.27,
+        'brick'             :  15.28,
+        'concrete (102 mm)' :  26.00
+    }
+    return dBmatList[mat]
+
+def mat2color(mat):
+    colorMatList = {
+        'drywall'           :  'y',
+        'glass'             :  'b',
+        'wooden'            :  'g',
+        'brick'             :  'b',
+        'concrete (102 mm)' :  'k'
+    }
+    return colorMatList[mat]
+
 def genWallsFromFile(WallFileName):
     walls = []
-    walls.append([ 0.0,  0.0, 10.0,  0.0, 0])
-    walls.append([10.0,  0.0, 10.0, 10.0, 0])
-    walls.append([10.0, 10.0,  0.0, 10.0, 0])
-    walls.append([ 0.0, 10.0,  0.0,  0.0, 0])
-    walls.append([ 0.0,  8.0,  5.0,  8.0, 0])
-    walls.append([ 5.0,  8.0,  5.0,  6.0, 0])
-    walls.append([ 5.0,  6.0,  3.0,  6.0, 0])
-    walls.append([ 3.0,  6.0,  3.0,  4.0, 0])
-    walls.append([ 3.0,  4.0,  0.0,  4.0, 0])
-    walls.append([ 9.0,  3.0,  7.0,  3.0, 0])
-    walls.append([ 7.0,  3.0,  7.0,  8.0, 0])
-    walls.append([ 7.0,  8.0, 10.0,  8.0, 0])
+    walls.append([ 0.0,  0.0, 10.0,  0.0, 'concrete (102 mm)'])
+    walls.append([10.0,  0.0, 10.0, 10.0, 'concrete (102 mm)'])
+    walls.append([10.0, 10.0,  0.0, 10.0, 'concrete (102 mm)'])
+    walls.append([ 0.0, 10.0,  0.0,  0.0, 'concrete (102 mm)'])
+    walls.append([ 0.0,  8.0,  5.0,  8.0, 'wooden'])
+    walls.append([ 5.0,  8.0,  5.0,  6.0, 'wooden'])
+    walls.append([ 5.0,  6.0,  3.0,  6.0, 'glass'])
+    walls.append([ 3.0,  6.0,  3.0,  4.0, 'wooden'])
+    walls.append([ 3.0,  4.0,  0.0,  4.0, 'drywall'])
+    walls.append([ 9.0,  3.0,  7.0,  3.0, 'drywall'])
+    walls.append([ 7.0,  3.0,  7.0,  8.0, 'drywall'])
+    walls.append([ 7.0,  8.0, 10.0,  8.0, 'drywall'])
     return walls
 
 def getAPsFromFile(ApFileName):
     APs = []
-    APs.append([2.4, 6.25, 5.0])
-    APs.append([8.4, 6.25, 5.0])
-    APs.append([5.4, 5.25, 5.0])
+    APs.append([ 5.00,  5.00, 5.0])
+    APs.append([ 0.00,  0.00, 5.0])
+    APs.append([10.00,  0.00, 5.0])
+    APs.append([10.00, 10.00, 5.0])
+    APs.append([ 0.00, 10.00, 5.0])
     return APs
 
 def plot(data,walls):
 
     myPlot = plt.contourf(
-        data[:,:,0], data[:,:,1],data[:,:,2], 
-        levels = 51)
+        data[:,:,0], data[:,:,1], data[:,:,2],
+        levels = 101)
     for wall in walls:
-        plt.plot([wall[0],wall[2]], [wall[1],wall[3]],c='k')
+        plt.plot(
+            [wall[0],wall[2]], [wall[1],wall[3]], 
+            c = mat2color(wall[4]),
+            linewidth = 5)
     plt.colorbar(myPlot)
     plt.clim(-10, 0)
     plt.show()
 
-def runSim(Aps, Walls, numCells = 100, dx = 0.0, dy = 0.0):
+def runSim(Aps, Walls, numCells = 50, dx = 0.0, dy = 0.0):
     # Get max room dimensions (Assums square and min == 0)
     maxX = 0
     maxY = 0
@@ -69,15 +94,12 @@ def runSim(Aps, Walls, numCells = 100, dx = 0.0, dy = 0.0):
             for Ap in Aps:
                 rsq, vec = getMagSq(Ap, point)
                 inTheWay = []
+                reducePower = 0.0
                 for wall in Walls:
                     d = dist2wall(Ap,point,wall,vec)
                     if d > 0:
-                        inTheWay.append([d, wall])
-                if len(inTheWay) > 0:
-                    reducePower = len(inTheWay)*1.5
-                else:
-                    reducePower = 0.0
-                    
+                        reducePower += mat2dB(wall[4])
+
                 newVal = max([-reducePower + -2*np.log(max([1.0,np.sqrt(rsq)])),data[ky,kx,2]])
                 data[ky,kx,2] = newVal
     return data
