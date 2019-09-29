@@ -16,36 +16,46 @@ def mat2dB(mat): # From https://eyesaas.com/wifi-signal-loss/
 def mat2color(mat):
     colorMatList = {
         'drywall'           :  'y',
-        'glass'             :  'b',
-        'wooden'            :  'g',
-        'brick'             :  'b',
-        'concrete (102 mm)' :  'k'
+        'glass'             :  'cyan',
+        'wooden'            :  'tan',
+        'brick'             :  'firebrick',
+        'concrete (102 mm)' :  'grey'
     }
     return colorMatList[mat]
 
 def genWallsFromFile(WallFileName):
+
+    with open(WallFileName,'r') as fp:
+        wallLines = fp.readlines()
+     
     walls = []
-    walls.append([ 0.0,  0.0, 10.0,  0.0, 'concrete (102 mm)'])
-    walls.append([10.0,  0.0, 10.0, 10.0, 'concrete (102 mm)'])
-    walls.append([10.0, 10.0,  0.0, 10.0, 'concrete (102 mm)'])
-    walls.append([ 0.0, 10.0,  0.0,  0.0, 'concrete (102 mm)'])
-    walls.append([ 0.0,  8.0,  5.0,  8.0, 'wooden'])
-    walls.append([ 5.0,  8.0,  5.0,  6.0, 'wooden'])
-    walls.append([ 5.0,  6.0,  3.0,  6.0, 'glass'])
-    walls.append([ 3.0,  6.0,  3.0,  4.0, 'wooden'])
-    walls.append([ 3.0,  4.0,  0.0,  4.0, 'drywall'])
-    walls.append([ 9.0,  3.0,  7.0,  3.0, 'drywall'])
-    walls.append([ 7.0,  3.0,  7.0,  8.0, 'drywall'])
-    walls.append([ 7.0,  8.0, 10.0,  8.0, 'drywall'])
+    for line in wallLines:
+        if line[0] == '#' or len(line) == 0:
+            continue
+        splitLine = line.split(',')
+        walls.append([
+            float(splitLine[0]), 
+            float(splitLine[1]), 
+            float(splitLine[2]), 
+            float(splitLine[3]), 
+            splitLine[4].strip()
+        ])
     return walls
 
 def getAPsFromFile(ApFileName):
+    
+    with open(ApFileName,'r') as fp:
+        ApLines = fp.readlines()
     APs = []
-    APs.append([ 5.00,  5.00, 5.0])
-    APs.append([ 0.00,  0.00, 5.0])
-    APs.append([10.00,  0.00, 5.0])
-    APs.append([10.00, 10.00, 5.0])
-    APs.append([ 0.00, 10.00, 5.0])
+    for line in ApLines:
+        if line[0] == '#' or len(line.strip('\r\n')) == 0:
+            continue
+        splitLine = line.split(',')
+        APs.append([
+            float(splitLine[0]), 
+            float(splitLine[1]), 
+            float(splitLine[2])
+        ])
     return APs
 
 def plot(data,walls):
@@ -57,12 +67,12 @@ def plot(data,walls):
         plt.plot(
             [wall[0],wall[2]], [wall[1],wall[3]], 
             c = mat2color(wall[4]),
-            linewidth = 5)
+            linewidth = 3)
     plt.colorbar(myPlot)
     plt.clim(-10, 0)
     plt.show()
 
-def runSim(Aps, Walls, numCells = 50, dx = 0.0, dy = 0.0):
+def runSim(Aps, Walls, numCells = 51, dx = 0.0, dy = 0.0):
     # Get max room dimensions (Assums square and min == 0)
     maxX = 0
     maxY = 0
