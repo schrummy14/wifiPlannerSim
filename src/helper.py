@@ -27,23 +27,23 @@ def genWallsFromFile(WallFileName):
 
     with open(WallFileName,'r') as fp:
         wallLines = fp.readlines()
-     
+
     walls = []
     for line in wallLines:
         if line[0] == '#' or len(line) == 0:
             continue
         splitLine = line.split(',')
         walls.append([
-            float(splitLine[0]), 
-            float(splitLine[1]), 
-            float(splitLine[2]), 
-            float(splitLine[3]), 
+            float(splitLine[0]),
+            float(splitLine[1]),
+            float(splitLine[2]),
+            float(splitLine[3]),
             splitLine[4].strip()
         ])
     return walls
 
 def getAPsFromFile(ApFileName):
-    
+
     with open(ApFileName,'r') as fp:
         ApLines = fp.readlines()
     APs = []
@@ -52,8 +52,8 @@ def getAPsFromFile(ApFileName):
             continue
         splitLine = line.split(',')
         APs.append([
-            float(splitLine[0]), 
-            float(splitLine[1]), 
+            float(splitLine[0]),
+            float(splitLine[1]),
             float(splitLine[2])
         ])
     return APs
@@ -65,7 +65,7 @@ def plot(data,walls):
         levels = 101)
     for wall in walls:
         plt.plot(
-            [wall[0],wall[2]], [wall[1],wall[3]], 
+            [wall[0],wall[2]], [wall[1],wall[3]],
             c = mat2color(wall[4]),
             linewidth = 3)
     plt.colorbar(myPlot)
@@ -95,26 +95,26 @@ def runSim(Aps, Walls, numCells = 51, dx = 0.0, dy = 0.0):
     dx = maxX/numCellsX
     dy = maxY/numCellsY
     data = np.zeros([(numCellsY+1),(numCellsX+1),3]) - 100.0
+    for ki in tqdm(range((numCellsY+1)*(numCellsX+1))):
+        ky = int(ki/(numCellsX+1))
+        kx = ki%(numCellsY+1)
+        data[ky,kx,0] = kx*dx
+        data[ky,kx,1] = ky*dy
+        point = data[ky,kx,0:2]
+        for Ap in Aps:
+            rsq = getMagSq(Ap, point)
+            inTheWay = []
+            reducePower = 0.0
+            for wall in Walls:
+                d = dist2wall(Ap,point,wall)
+                if d > 0:
+                    reducePower += mat2dB(wall[4])
 
-    for ky in tqdm(range(numCellsY+1)):
-        for kx in range(numCellsX+1):
-            data[ky,kx,0] = kx*dx
-            data[ky,kx,1] = ky*dy
-            point = data[ky,kx,0:2]
-            for Ap in Aps:
-                rsq, vec = getMagSq(Ap, point)
-                inTheWay = []
-                reducePower = 0.0
-                for wall in Walls:
-                    d = dist2wall(Ap,point,wall,vec)
-                    if d > 0:
-                        reducePower += mat2dB(wall[4])
-
-                newVal = max([-reducePower + -2*np.log(max([1.0,np.sqrt(rsq)])),data[ky,kx,2]])
-                data[ky,kx,2] = newVal
+            newVal = max([-reducePower + -2*np.log(max([1.0,np.sqrt(rsq)])),data[ky,kx,2]])
+            data[ky,kx,2] = newVal
     return data
 
-def dist2wall(Ap,point,wall,vec):
+def dist2wall(Ap,point,wall):
     l1 = LineString([(Ap[0],Ap[1]), (point[0],point[1])])
     l2 = LineString([(wall[0],wall[1]),(wall[2],wall[3])])
     x = l1.intersection(l2)
@@ -136,7 +136,6 @@ def getMagSq(Ap, data):
 
     rsq = (Axmx)*(Axmx) + (Aymy)*(Aymy)
     if rsq == 0.0:
-        return rsq, [0,0]
-    vec = np.array([Axmx, Aymy])/np.sqrt(rsq)
+        return rsq
 
-    return rsq, vec
+    return rsq
